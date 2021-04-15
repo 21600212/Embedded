@@ -47,5 +47,5 @@ uint32_t button_input(void){
 }
 
 void led2_toggle(void){
-    GPIOA->ODR = ~GPIOA->ODR;
+    GPIOA->ODR ^= (0b1 << 5);
 }

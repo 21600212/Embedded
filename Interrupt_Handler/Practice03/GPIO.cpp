@@ -22,7 +22,7 @@ int main() {
 
         led2_toggle();
 
-        ThisThread::sleep_for(interval);
+        ThisThread::sleep_for(chrono::milliseconds(interval));
     }
 }
 
@@ -32,17 +32,20 @@ void led2_init(void){
     GPIOA->MODER &= ~(0b11 << 10);
     GPIOA->MODER |= (0b01 << 10);
 }
+
 void button_init(void){
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
     GPIOC->MODER &= ~(0b11 << 26);
 }
+
 uint32_t button_input(void){
     uint32_t inputData = GPIOC->IDR;
     inputData &= (0b1 << 13);
 
     return inputData;
 }
+
 void led2_toggle(void){
     GPIOA->ODR = ~GPIOA->ODR;
 }

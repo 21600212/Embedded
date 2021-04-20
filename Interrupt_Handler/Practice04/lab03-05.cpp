@@ -16,12 +16,11 @@ void button_onpressed_cb(void){
 
 // ISR for time out
 void timeout_cb(void){
-    if(is_bt_pressed){
+    if(is_bt_pressed && !led2){
         is_timeout = 1;
         is_bt_pressed = 0;
     }
-    else
-        led2 = !led2;
+    led2 = !led2;
 }
 
 int main(){
@@ -38,7 +37,6 @@ int main(){
             if (interval > 4.0) {
                 interval = 0.125;
             }
-            led2 = !led2;
             led2_ticker.attach(&timeout_cb, interval);
             is_timeout = 0;
         }

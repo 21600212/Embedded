@@ -1,57 +1,58 @@
 #include "mbed.h"
 
 InterruptIn button(USER_BUTTON);
-InterruptIn button2(USER_BUTTON);
+// InterruptIn button2(USER_BUTTON);
 Timer t;
 
-int start, last;
+int start_t, last;
 int end_t;
 int PullDown_t;
-volatile int bt_pressed, bt2_pressed;
+int bt_mode;
+volatile int is_bt_pressed, is_bt_pressed_off;
+
+void button_onpressed_cb(void);
+void button_offpressed_cb(void);
 
 void button_onpressed_cb(void){
-    if(start == 0)
-        start = t.elapsed_time().count();
+    if(start_t == 0)
+        last = start_t = chrono::duration_cast<chrono::milliseconds>(t.elapsed_time()).count();
+    else if(start_t == -1)
+        start_t = 0;
     else{
-        end_t = t.elapsed_time().count();
-        bt_pressed = 1;
+        end_t = chrono::duration_cast<chrono::milliseconds>(t.elapsed_time()).count();
+        is_bt_pressed = 1;
     }
 }
 
-void button2_onpressed_cb(void){
-    PullDown_t = t.elapsed_time().count();
-    bt2_pressed = 1;
+void button_offpressed_cb(void){
+    PullDown_t = chrono::duration_cast<chrono::milliseconds>(t.elapsed_time()).count();
+    is_bt_pressed_off = 1;
 }
 
 int main() {
-    printf("\r\n*** System started ***\r\n");
+    printf("\n*** Timer started ***\r\n\n");
     button.mode(PullUp);
-    button2.mode(PullDown);
     button.fall(&button_onpressed_cb);
-    button2.rise(&button2_onpressed_cb);
-
-    int i;
-    float sum;
-
-    printf("\r\n*** Basic Timer Example ***\r\n");
 
     t.start();
     while(1) {
-        if(bt_pressed){
-            end_t/=1000;
-            start/=1000;
-
-            printf("Lab time is %d | %d (s).\r\n", end_t - start, end_t - last);
-            printf("Pull down val: %d\r\n", PullDown_t);
+        if(is_bt_pressed && start_t != 0){
+            printf("Lab time: %d / %d (ms).\r\n", end_t - start_t, end_t - last);
             last = end_t;
-            bt_pressed = 0;
+            is_bt_pressed = 0;
+            button.mode(PullDown);
+            button.rise(&button_offpressed_cb);
         }
-        if(bt2_pressed){
-            printf("Pull down time is %d (s).\r\n",  PullDown_t - last);
+        if(is_bt_pressed_off){
             if(PullDown_t - last > 1000){
-                start = last = 0;
+                start_t = -1;
+                last = PullDown_t = 0;
+                t.reset();
+                printf("\r\n@@@ Reset Timer @@@\r\n\n");
             }
-            bt2_pressed = 0;
+            is_bt_pressed_off = 0;
+            button.mode(PullUp);
+            button.rise(&button_onpressed_cb);
         }
     }
 }

@@ -29,19 +29,25 @@ void led2_init(void){
 }
 void button_init(void){
     __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
 
     GPIOC->MODER &= ~(0b11 << 26);
 
-    EXTI->IMR = (0b01<<13);
+    SYSCFG->EXTICR[3] = (2<<(1*4));
+
+    EXTI->IMR = (1<<13);
     EXTI->RTSR = 0;
-    EXTI->FTSR = (0b01<<13);
+    EXTI->FTSR = (1<<13);
 
-
+    NVIC->ISER[1] = 0x0100;
+    NVIC->IP[40]  = 40;
 }
 void button_Handler(void){
     interval = interval << 1;
     if(interval > 2000)
         interval = 500;
+
+    EXTI->PR |= (1 << 13);
 }
 void led2_toggle(void){
     GPIOA->ODR ^= (0b1 << 5);

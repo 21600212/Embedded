@@ -1,5 +1,7 @@
 #include "mbed.h"
 
+UnbufferedSerial pc(USBTX, USBRX, 115200);
+
 volatile int interval;
 
 void led2_init(void);
@@ -43,6 +45,8 @@ void button_init(void){
     NVIC->IP[40]  = 40;
 }
 void button_Handler(void){
+    pc.write(".", 1);
+
     interval = interval << 1;
     if(interval > 2000)
         interval = 500;

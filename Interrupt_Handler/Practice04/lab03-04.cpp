@@ -37,13 +37,13 @@ int main() {
     t.start();
     while(1) {
         if(is_bt_pressed && start_t != 0){
-            printf("Lab time: %d / %d (ms).\r\n", end_t - start_t, end_t - last);
-            last = end_t;
             is_bt_pressed = 0;
             button.mode(PullDown);
             button.rise(&button_offpressed_cb);
         }
         if(is_bt_pressed_off){
+            printf("Total time: %d | Lab time: %d | Pressed time: %d (ms).\r\n", end_t - start_t, end_t - last, PullDown_t - end_t);
+            last = end_t;
             if(PullDown_t - last > 1000){
                 start_t = -1;
                 last = PullDown_t = 0;

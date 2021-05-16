@@ -1,344 +1,216 @@
 /**
- * IR receiver (Version 0.0.4)
+ * RemoteIR library - Test program.
  *
  * Copyright (C) 2010 Shinichiro Nakamura (CuBeatSystems)
  * http://shinta.main.jp/
  */
 
+#include <mbed.h>
+
 #include "ReceiverIR.h"
+#include "TransmitterIR.h"
 
-#define LOCK()
-#define UNLOCK()
-
-#define InRange(x,y)   ((((y) * 0.7) < (x)) && ((x) < ((y) * 1.3)))
+#define TEST_LOOP_BACK  0
 
 #define MAXIMUM_BUFFER_SIZE 80
 
-char buf [MAXIMUM_BUFFER_SIZE];
+char buffer [MAXIMUM_BUFFER_SIZE];
 BufferedSerial pc(USBTX, USBRX, 115200);
 
-/**
- * Constructor.
- *
- * @param rxpin Pin for receive IR signal.
- */
+ReceiverIR ir_rx(D4);
 
-
-ReceiverIR::ReceiverIR(PinName rxpin) : evt(rxpin) {
-    init_state();
-    evt.fall(callback(this, &ReceiverIR::isr_fall));
-    evt.rise(callback(this, &ReceiverIR::isr_rise));
-    evt.mode(PullUp);
-    uint64_t tmp = 10000;
-    ticker.attach_us(callback(this, &ReceiverIR::isr_wdt), tmp);
-}
+static DigitalOut led(PA_5);
+Ticker ledTicker;
 
 /**
- * Destructor.
- */
-ReceiverIR::~ReceiverIR() {
-}
-
-/**
- * Get state.
+ * Receive.
  *
- * @return Current state.
- */
-ReceiverIR::State ReceiverIR::getState() {
-    LOCK();
-    State s = work.state;
-    UNLOCK();
-    return s;
-}
-
-/**
- * Get data.
+ * @param format Pointer to a format.
+ * @param buf Pointer to a buffer.
+ * @param bufsiz Size of the buffer.
  *
- * @param format Pointer to format.
- * @param buf Buffer of a data.
- * @param bitlength Bit length of the buffer.
- *
- * @return Data bit length.
+ * @return Bit length of the received data.
  */
-int ReceiverIR::getData(RemoteIR::Format *format, uint8_t *buf, int bitlength) {
-    LOCK();
-
-    if (bitlength < data.bitcount) {
-        UNLOCK();
-        return -1;
-    }
-
-    const int nbits = data.bitcount;
-    const int nbytes = data.bitcount / 8 + (((data.bitcount % 8) != 0) ? 1 : 0);
-    *format = data.format;
-    for (int i = 0; i < nbytes; i++) {
-        buf[i] = data.buffer[i];
-    }
-
-    init_state();
-
-    UNLOCK();
-    return nbits;
-}
-
-void ReceiverIR::init_state(void) {
-    work.c1 = -1;
-    work.c2 = -1;
-    work.c3 = -1;
-    work.d1 = -1;
-    work.d2 = -1;
-    work.state = Idle;
-    data.format = RemoteIR::UNKNOWN;
-    data.bitcount = 0;
-    timer.stop();
-    timer.reset();
-    for (int i = 0; i < sizeof(data.buffer); i++) {
-        data.buffer[i] = 0;
-    }
-}
-
-void ReceiverIR::isr_wdt(void) {
-    LOCK();
-    static int cnt = 0;
-    if ((Idle != work.state) || ((0 <= work.c1) || (0 <= work.c2) || (0 <= work.c3) || (0 <= work.d1) || (0 <= work.d2))) {
+int receive(RemoteIR::Format *format, uint8_t *buf, int bufsiz, int timeout = 100) {
+    int cnt = 0;
+    while (ir_rx.getState() != ReceiverIR::Received) {
         cnt++;
-        if (cnt > 50) {
-#if 0
-            printf("# WDT [c1=%d, c2=%d, c3=%d, d1=%d, d2=%d, state=%d, format=%d, bitcount=%d]\n",
-                   work.c1,
-                   work.c2,
-                   work.c3,
-                   work.d1,
-                   work.d2,
-                   work.state,
-                   data.format,
-                   data.bitcount);
-#endif
-            init_state();
-            cnt = 0;
+        if (timeout < cnt) {
+            return -1;
         }
-    } else {
-        cnt = 0;
     }
-    UNLOCK();
+    return ir_rx.getData(format, buf, bufsiz * 8);
 }
 
-void ReceiverIR::isr_fall(void) {
-    LOCK();
-    switch (work.state) {
-        case Idle:
-            if (work.c1 < 0) {
-                timer.start();
-                work.c1 = timer.read_us();
-            } else {
-                work.c3 = timer.read_us();
-                int a = work.c2 - work.c1;
-                int b = work.c3 - work.c2;
-                if (InRange(a, RemoteIR::TUS_NEC * 16) && InRange(b, RemoteIR::TUS_NEC * 8)) {
-                    /*
-                     * NEC.
-                     */
-                    data.format = RemoteIR::NEC;
-                    work.state = Receiving;
-                    data.bitcount = 0;
-                } else if (InRange(a, RemoteIR::TUS_NEC * 16) && InRange(b, RemoteIR::TUS_NEC * 4)) {
-                    /*
-                     * NEC Repeat.
-                     */
-                    data.format = RemoteIR::NEC_REPEAT;
-                    work.state = Received;
-                    data.bitcount = 0;
-                    work.c1 = -1;
-                    work.c2 = -1;
-                    work.c3 = -1;
-                    work.d1 = -1;
-                    work.d2 = -1;
-                } else if (InRange(a, RemoteIR::TUS_AEHA * 8) && InRange(b, RemoteIR::TUS_AEHA * 4)) {
-                    /*
-                     * AEHA.
-                     */
-                    data.format = RemoteIR::AEHA;
-                    work.state = Receiving;
-                    data.bitcount = 0;
-                } else if (InRange(a, RemoteIR::TUS_AEHA * 8) && InRange(b, RemoteIR::TUS_AEHA * 8)) {
-                    /*
-                     * AEHA Repeat.
-                     */
-                    data.format = RemoteIR::AEHA_REPEAT;
-                    work.state = Received;
-                    data.bitcount = 0;
-                    work.c1 = -1;
-                    work.c2 = -1;
-                    work.c3 = -1;
-                    work.d1 = -1;
-                    work.d2 = -1;
-                } else {
-                    init_state();
-                }
-            }
-            break;
-        case Receiving:
-            if (RemoteIR::NEC == data.format) {
-                work.d2 = timer.read_us();
-                int a = work.d2 - work.d1;
-                if (InRange(a, RemoteIR::TUS_NEC * 3)) {
-                    data.buffer[data.bitcount / 8] |= (1 << (data.bitcount % 8));
-                } else if (InRange(a, RemoteIR::TUS_NEC * 1)) {
-                    data.buffer[data.bitcount / 8] &= ~(1 << (data.bitcount % 8));
-                }
-                data.bitcount++;
-#if 0
-                /*
-                 * Length of NEC is always 32 bits.
-                 */
-                if (32 <= data.bitcount) {
-                    data.state = Received;
-                    work.c1 = -1;
-                    work.c2 = -1;
-                    work.c3 = -1;
-                    work.d1 = -1;
-                    work.d2 = -1;
-                }
-#else
-                /*
-                 * Set timeout for tail detection automatically.
-                 */
-                timeout.detach();
-                timeout.attach_us(callback(this, &ReceiverIR::isr_timeout), RemoteIR::TUS_NEC * 5);
-#endif
-            } else if (RemoteIR::AEHA == data.format) {
-                work.d2 = timer.read_us();
-                int a = work.d2 - work.d1;
-                if (InRange(a, RemoteIR::TUS_AEHA * 3)) {
-                    data.buffer[data.bitcount / 8] |= (1 << (data.bitcount % 8));
-                } else if (InRange(a, RemoteIR::TUS_AEHA * 1)) {
-                    data.buffer[data.bitcount / 8] &= ~(1 << (data.bitcount % 8));
-                }
-                data.bitcount++;
-#if 0
-                /*
-                 * Typical length of AEHA is 48 bits.
-                 * Please check a specification of your remote controller if you find a problem.
-                 */
-                if (48 <= data.bitcount) {
-                    data.state = Received;
-                    work.c1 = -1;
-                    work.c2 = -1;
-                    work.c3 = -1;
-                    work.d1 = -1;
-                    work.d2 = -1;
-                }
-#else
-                /*
-                 * Set timeout for tail detection automatically.
-                 */
-                timeout.detach();
-                timeout.attach_us(callback(this, &ReceiverIR::isr_timeout), RemoteIR::TUS_AEHA * 5);
-#endif
-            } else if (RemoteIR::SONY == data.format) {
-                work.d1 = timer.read_us();
-            }
-            break;
-        case Received:
-            break;
-        default:
-            break;
-    }
-    UNLOCK();
+/**
+ * Transmit.
+ *
+ * @param format Format.
+ * @param buf Pointer to a buffer.
+ * @param bitlength Bit length of the data.
+ *
+ * @return Bit length of the received data.
+ */
+//int transmit(RemoteIR::Format format, uint8_t *buf, int bitlength, int timeout = 100) {
+//    int cnt = 0;
+//    while (ir_tx.getState() != TransmitterIR::Idle) {
+//        cnt++;
+//        if (timeout < cnt) {
+//            return -1;
+//        }
+//    }
+//    return ir_tx.setData(format, buf, bitlength);
+//}
+
+/**
+ * Display a current status.
+ */
+void display_status(char *status, int bitlength) {
+    sprintf(buffer, "%-5.5s:%02d\r\n", status, bitlength);
+    pc.write(buffer, strlen(buffer));
 }
 
-void ReceiverIR::isr_rise(void) {
-    LOCK();
-    switch (work.state) {
-        case Idle:
-            if (0 <= work.c1) {
-                work.c2 = timer.read_us();
-                int a = work.c2 - work.c1;
-                if (InRange(a, RemoteIR::TUS_SONY * 4)) {
-                    data.format = RemoteIR::SONY;
-                    work.state = Receiving;
-                    data.bitcount = 0;
-                } else {
-                    static const int MINIMUM_LEADER_WIDTH = 150;
-                    if (a < MINIMUM_LEADER_WIDTH) {
-                        init_state();
-                    }
-                }
-            } else {
-                init_state();
-            }
+/**
+ * Display a format of a data.
+ */
+void display_format(RemoteIR::Format format) {
+    switch (format) {
+        case RemoteIR::UNKNOWN:
+            sprintf(buffer, "????????\r\n");
+            pc.write(buffer, strlen(buffer));
             break;
-        case Receiving:
-            if (RemoteIR::NEC == data.format) {
-                work.d1 = timer.read_us();
-            } else if (RemoteIR::AEHA == data.format) {
-                work.d1 = timer.read_us();
-            } else if (RemoteIR::SONY == data.format) {
-                work.d2 = timer.read_us();
-                int a = work.d2 - work.d1;
-                if (InRange(a, RemoteIR::TUS_SONY * 2)) {
-                    data.buffer[data.bitcount / 8] |= (1 << (data.bitcount % 8));
-                } else if (InRange(a, RemoteIR::TUS_SONY * 1)) {
-                    data.buffer[data.bitcount / 8] &= ~(1 << (data.bitcount % 8));
-                }
-                data.bitcount++;
-#if 0
-                /*
-                 * How do I know the correct length? (6bits, 12bits, 15bits, 20bits...)
-                 * By a model only?
-                 * Please check a specification of your remote controller if you find a problem.
-                 */
-                if (12 <= data.bitcount) {
-                    data.state = Received;
-                    work.c1 = -1;
-                    work.c2 = -1;
-                    work.c3 = -1;
-                    work.d1 = -1;
-                    work.d2 = -1;
-                }
-#else
-                /*
-                 * Set timeout for tail detection automatically.
-                 */
-                timeout.detach();
-                timeout.attach_us(callback(this, &ReceiverIR::isr_timeout), RemoteIR::TUS_SONY * 4);
-#endif
-            }
+        case RemoteIR::NEC:
+            sprintf(buffer, "NEC     \r\n");
+            pc.write(buffer, strlen(buffer));
             break;
-        case Received:
+        case RemoteIR::NEC_REPEAT:
+            sprintf(buffer, "NEC  (R)\r\n");
+            pc.write(buffer, strlen(buffer));
             break;
-        default:
+        case RemoteIR::AEHA:
+            sprintf(buffer, "AEHA    \r\n");
+            pc.write(buffer, strlen(buffer));
+            break;
+        case RemoteIR::AEHA_REPEAT:
+            sprintf(buffer, "AEHA (R)\r\n");
+            pc.write(buffer, strlen(buffer));
+            break;
+        case RemoteIR::SONY:
+            sprintf(buffer, "SONY    \r\n");
+            pc.write(buffer, strlen(buffer));
             break;
     }
-    UNLOCK();
 }
 
-void ReceiverIR::isr_timeout(void) {
-    LOCK();
-#if 0
-    printf("# TIMEOUT [c1=%d, c2=%d, c3=%d, d1=%d, d2=%d, state=%d, format=%d, bitcount=%d]\n",
-           work.c1,
-           work.c2,
-           work.c3,
-           work.d1,
-           work.d2,
-           work.state,
-           data.format,
-           data.bitcount);
-#endif
-    if (work.state == Receiving) {
-        work.state = Received;
-        work.c1 = -1;
-        work.c2 = -1;
-        work.c3 = -1;
-        work.d1 = -1;
-        work.d2 = -1;
+/**
+ * Display a data.
+ *
+ * @param buf Pointer to a buffer.
+ * @param bitlength Bit length of a data.
+ */
+void display_data(uint8_t *buf, int bitlength) {
+    const int n = bitlength / 8 + (((bitlength % 8) != 0) ? 1 : 0);
+    for (int i = 0; i < n; i++) {
+        sprintf(buffer, "%02X\r\n", buf[i]);
+        pc.write(buffer, strlen(buffer));
     }
-    UNLOCK();
+    for (int i = 0; i < 8 - n; i++) {
+        sprintf(buffer, "--\r\n");
+        pc.write(buffer, strlen(buffer));
+    }
 }
 
-int main()
-{
-    sprintf(buf, "\r\n Welcome to RemoteIR In Lab.\r\n");
-    pc.write(buf, strlen(buf));
+void ledfunc(void) {
+    led = led + 1;
+}
+
+/**
+ * Entry point.
+ */
+int main(void) {
+
+    ledTicker.attach(&ledfunc, 0.5);
+
+    /*
+     * Splash.
+     */
+
+    sprintf(buffer, "RemoteIR        \r\n");
+    pc.write(buffer, strlen(buffer));
+    sprintf(buffer, "Program example.\r\n");
+    pc.write(buffer, strlen(buffer));
+
+    ThisThread::sleep_for(chrono::milliseconds(3000));
+
+    /*
+     * Initialize.
+     */
+
+    sprintf(buffer, "Press a button  \r\n");
+    pc.write(buffer, strlen(buffer));
+    sprintf(buffer, "on a controller.\r\n");
+    pc.write(buffer, strlen(buffer));
+
+    /*
+     * Execute.
+     */
+    while (1) {
+        uint8_t buf1[32];
+        uint8_t buf2[32];
+        int bitlength1;
+        int bitlength2;
+        RemoteIR::Format format;
+
+        memset(buf1, 0x00, sizeof(buf1));
+        memset(buf2, 0x00, sizeof(buf2));
+
+        {
+            bitlength1 = receive(&format, buf1, sizeof(buf1));
+            if (bitlength1 < 0) {
+                continue;
+            }
+            display_status("RECV", bitlength1);
+            display_data(buf1, bitlength1);
+            display_format(format);
+        }
+
+#if TEST_LOOP_BACK
+//        wait_ms(100);
+//
+//        {
+//            bitlength1 = transmit(format, buf1, bitlength1);
+//            if (bitlength1 < 0) {
+//                continue;
+//            }
+//            display_status("TRAN", bitlength1);
+//            display_data(buf1, bitlength1);
+//            display_format(format);
+//        }
+
+        ThisThread::sleep_for(chrono::milliseconds(100));
+
+        {
+            bitlength2 = receive(&format, buf2, sizeof(buf2));
+            if (bitlength2 < 0) {
+                continue;
+            }
+            display_status("RECV", bitlength2);
+            display_data(buf2, bitlength2);
+            display_format(format);
+        }
+        \
+    \
+        ThisThread::sleep_for(chrono::milliseconds(100));
+
+        {
+            for (int i = 0; i < sizeof(buf1); i++) {
+                if (buf1[i] != buf2[i]) {
+                    display_status("CPERR", bitlength2);
+                    ThisThread::sleep_for(chrono::milliseconds(1000));
+                    continue;
+                }
+            }
+        }
+#endif
+    }
 }

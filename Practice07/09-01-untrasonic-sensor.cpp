@@ -5,6 +5,7 @@ DigitalIn echo(ARDUINO_UNO_D2);
 Timer timer1;
 
 DigitalOut led1(LED1);
+PwmOut buzzer(ARDUINO_UNO_D4); //D3
 
 BufferedSerial pc(CONSOLE_TX, CONSOLE_RX, 115200);
 char buffer[80];
@@ -21,10 +22,13 @@ void my_wait_us (uint32_t delay)
 int main()
 {
   float distance;
-  sprintf
-  (buffer, r n Welcome to Utrasonic Sensor Lab.! r n");
-  pc.write
-  (buffer, strlen (
+
+  int period_us;
+  int beat_ms;
+
+  sprintf(buffer, "\r\nWelcome to Utrasonic Sensor Lab.!\r\n");
+  pc.write(buffer, strlen(buffer));
+
   // initialization
   trigger = 0;
 
@@ -46,6 +50,19 @@ int main()
     sprintf(buffer, " The distance is %.2f [cm] \n\r", distance);
     pc.write(buffer, strlen(buffer));
 
-    ThisThread::sleep_for(chrono::milliseconds(5000)); // 5sec
+    if(distance < 100){
+        buzzer = 1.0 - 0.1; // set duty cycle (1.0 0.1)
+        period_us = 1000000/261.626;
+        beat_ms = 62.5 * (distance+7)/7;
+        buzzer.period_us(period_us);
+        ThisThread::sleep_for(chrono::milliseconds(100)); // hold for beat period
+        buzzer.suspend();
+        ThisThread::sleep_for (chrono::milliseconds(beat_ms));
+        buzzer.resume();
+    }
+    else
+        buzzer.suspend();
+
+    ThisThread::sleep_for(chrono::milliseconds(10)); // 5sec
   }
 }

@@ -1,7 +1,7 @@
 ## 2021-01 Embedded Processor class assignment codes
 
 Practice Board: STM32 [**NUCLEO-F411RE**](https://www.st.com/en/evaluation-tools/nucleo-f411re.html)
-![image](https://user-images.githubusercontent.com/48133047/119146011-2b038600-ba85-11eb-913d-fcb8e04b3d47.png)
+![image](https://user-images.githubusercontent.com/48133047/119148300-50918f00-ba87-11eb-991b-befe4b7675bb.png)
 
 **What I leared**:
 1. About ARM

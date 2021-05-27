@@ -25,12 +25,14 @@ unsigned int crc;
 
 int main() {
 
-    // ThisThread::sleep_for(chrono::milliseconds(5000));
-    // gOLED.clearDisplay();
-    //
-    // gOLED.printf("Handong Univ. CSEE\r\n\n\n\n");
-    // gOLED.printf("Temperature:\r\n\n");
-    // gOLED.printf("Humadity:");
+     ThisThread::sleep_for(chrono::milliseconds(5000));
+     gOLED.clearDisplay();
+
+     gOLED.setTextSize(2);
+     gOLED.printf("Nam Jinwoo\r\n\n\n\n");
+     gOLED.setTextSize(1);
+//     gOLED.printf("Temp:\r\n\n");
+//     gOLED.printf("Hum:");
 
     while(1) {
         char tx[1];
@@ -80,21 +82,23 @@ int main() {
         pc.write(buffer, strlen(buffer));
         sprintf(buffer, "Humidity: %.2f [%%]\n\r", sample_humid);
         pc.write(buffer, strlen(buffer));
-        sprintf(buffer, "CRC: 0x%lx + 0x%lx / 0x%lx = 0x%lx\n\r", rx[0], rx[1], rx[2], ((rx[0] << 8)|rx[1])%rx[2]);
-        pc.write(buffer, strlen(buffer));
-        sprintf(buffer, "CRC check: %u / %u = %u  \n\r", rawHumidity, crc, rawHumidity%crc);
-        pc.write(buffer, strlen(buffer));
+
+//        sprintf(buffer, "CRC: 0x%lx + 0x%lx / 0x%lx = 0x%lx\n\r", rx[0], rx[1], rx[2], ((rx[0] << 8)|rx[1])%rx[2]);
+//        pc.write(buffer, strlen(buffer));
+//        sprintf(buffer, "CRC check: %u / %u = %u  \n\r", rawHumidity, crc, rawHumidity%crc);
+//        pc.write(buffer, strlen(buffer));
+//
         printf("\n\r");
 
-        // gOLED.setTextCursor(13*6, 4*8);
-        //
-        // gOLED.printf("%4.1f C", sample_ctemp);
-        //
-        // gOLED.setTextCursor(13*6, 6*8);
-        //
-        // gOLED.printf("%4.1f %%", sample_humid);
-        //
-        // gOLED.display();
+        gOLED.setTextCursor(13*1, 4*8);
+
+        gOLED.printf("Temp:       %4.1f C", sample_ctemp);
+
+        gOLED.setTextCursor(13*1, 6*8);
+
+        gOLED.printf("Humid:      %4.1f %%", sample_humid);
+
+        gOLED.display();
 
         ThisThread::sleep_for(chrono::milliseconds(3000));
     }

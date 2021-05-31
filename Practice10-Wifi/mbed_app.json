@@ -1,0 +1,31 @@
+{
+  "config":{
+    "wifi-shield": {
+    "help": "Options are internal, WIFI_ESP8266, WIFI_IDW0XX1",
+    "value": "WIFI_ESP8266"
+    },
+    "wifi-ssid":{
+    "help": "WiFi SSID",
+    "value": "HGU_WLAN_Free"
+    },
+    "wifi-password": {
+      "help": "WiFi Password",
+      "value": ""
+    },
+
+    "wifi-rx":{
+      "help": "TX pin for serial connection to external device",
+      "value": "PA_9"
+    },
+    "wifi-rx":{
+      "help": "RX pin for serial connection to external device",
+      "value": "PA_10"
+    }
+  },
+  "target_overrides":{
+    "*": {
+      "platform.stdio-convert-newlines": true,
+      "esp8266.provide-default" : true
+    }
+  }
+}

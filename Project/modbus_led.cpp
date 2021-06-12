@@ -85,7 +85,7 @@ int main(){
                     command[10]=0xFF;
             }
             else if(ch==0x31){
-                command[9]=0x13;
+                command[9]=0x10;
 
                 sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
                 wifi.write(buffer,strlen(buffer));

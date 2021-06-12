@@ -1,7 +1,5 @@
+
 #include "mbed.h"
-#include <cstdlib>
-#include <stdlib.h>
-#include <stdio.h>
 
 UnbufferedSerial pc(CONSOLE_TX, CONSOLE_RX, 230400);
 UnbufferedSerial wifi(ARDUINO_UNO_D8, ARDUINO_UNO_D2, 115200);
@@ -9,14 +7,10 @@ Thread sock_thread;
 char buffer[80];
 char buffer_wifi[80];
 
-char command_out[20];
-char command_in[20];
+char command[20];
+char command_pwm_out[20];
 int pointer = 0;
 int flag = 0;
-void check_status (){
-
-
-}
 
 void Char2Hex(unsigned char ch, char* szHex)
 {
@@ -26,25 +20,9 @@ void Char2Hex(unsigned char ch, char* szHex)
  szHex[2] = 0;
 }
 
-void toggle_led(){
-    command_out[9]=0x12;
 
-    sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
-    wifi.write(buffer,strlen(buffer));
-    ThisThread::sleep_for(500ms);
+void check_status (){
 
-    for(int i=0; i<12; ++i){
-        //sprintf(buffer, "%c",command[i]);
-        wifi.write(command_out+i,1);
-    }
-
-    if(command_out[10]==0xFF)
-        command_out[10]=0x00;
-    else
-        command_out[10]=0xFF;
-}
-
-int main(){
     sprintf(buffer, "AT+CWMODE=1\r\n");
     wifi.write(buffer, strlen(buffer));
     ThisThread::sleep_for(3000ms);
@@ -60,39 +38,36 @@ int main(){
     sprintf(buffer, "AT+CIPSTATUS\r\n");
     wifi.write(buffer, strlen(buffer));
     ThisThread::sleep_for(3000ms);
+}
 
+int main(){
+    command_pwm_out[0]=0x00;
+    command_pwm_out[1]=0x00;
+    command_pwm_out[2]=0x00;
+    command_pwm_out[3]=0x00;
+    command_pwm_out[4]=0x00;
+    command_pwm_out[5]=0x06;
+    command_pwm_out[6]=0x01;
+    command_pwm_out[7]=0x06;
+    command_pwm_out[8]=0x00;
+    command_pwm_out[9]=0x04;
+    command_pwm_out[10]=0x00;
+    command_pwm_out[11]=0x01;
 
-    command_out[0]=0x00;
-    command_out[1]=0x00;
-    command_out[2]=0x00;
-    command_out[3]=0x00;
-    command_out[4]=0x00;
-    command_out[5]=0x06;
-    command_out[6]=0x01;
-    command_out[7]=0x05;
-    command_out[8]=0x00;
-    command_out[9]=0x11;
-    command_out[10]=0xFF;
-    command_out[11]=0x00;
+    command[0]=0x00;
+    command[1]=0x00;
+    command[2]=0x00;
+    command[3]=0x00;
+    command[4]=0x00;
+    command[5]=0x06;
+    command[6]=0x01;
+    command[7]=0x05;
+    command[8]=0x00;
+    command[9]=0x11;
+    command[10]=0xFF;
+    command[11]=0x00;
 
-    command_in[0]=0x00;
-    command_in[1]=0x00;
-    command_in[2]=0x00;
-    command_in[3]=0x00;
-    command_in[4]=0x00;
-    command_in[5]=0x06;
-    command_in[6]=0x01;
-    command_in[7]=0x04;
-    command_in[8]=0x00;
-    command_in[9]=0x00;
-    command_in[10]=0x00;
-    command_in[11]=0x02;
-
-    char ch_pc;
-    char ch_wifi;
-
-    int flag = 0;
-    int cnt = 0;
+    char ch;
 
     sprintf(buffer, "\r\n *****key <---> Wifi *****\r\n");
     pc.write(buffer, strlen(buffer));
@@ -101,40 +76,36 @@ int main(){
 
     sock_thread.start(&check_status);
 
+    char ch_pc;
+    char ch_wifi;
+
+    int flag = 0;
+    int cnt = 0;
+
     while(true){
 
         if(pc.readable()){
             pc.read(&ch_pc, 1);
             pc.write(&ch_pc,1);
-            if(ch_pc==0x49){
+            if(ch_pc==0x4D){
                 sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
                 wifi.write(buffer,strlen(buffer));
                 ThisThread::sleep_for(500ms);
 
                 for(int i=0; i<12; ++i){
                     //sprintf(buffer, "%c",command[i]);
-                    wifi.write(command_in+i,1);
-                }
-            }
-            else if(ch_pc==0x4F){
-                command_out[9]=0x12;
-
-                sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
-                wifi.write(buffer,strlen(buffer));
-                ThisThread::sleep_for(500ms);
-
-                for(int i=0; i<12; ++i){
-                    //sprintf(buffer, "%c",command[i]);
-                    wifi.write(command_out+i,1);
+                    wifi.write(command_pwm_out+i,1);
                 }
 
-                if(command_out[10]==0xFF)
-                    command_out[10]=0x00;
+                if(command_pwm_out[11]==0x01)
+                    command_pwm_out[11]=0x02;
+                else if(command_pwm_out[11]==0x02)
+                    command_pwm_out[11]=0x00;
                 else
-                    command_out[10]=0xFF;
+                    command_pwm_out[11]=0x01;
             }
-            else if(ch_pc==0x32){
-                command_out[9]=0x12;
+            else if(ch_pc==0x4C){
+                command[9]=0x12;
 
                 sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
                 wifi.write(buffer,strlen(buffer));
@@ -142,19 +113,17 @@ int main(){
 
                 for(int i=0; i<12; ++i){
                     //sprintf(buffer, "%c",command[i]);
-                    wifi.write(command_out+i,1);
-                    pc.write(command_out+i,1);
+                    wifi.write(command+i,1);
                 }
 
-                if(command_out[10]==0xFF)
-                    command_out[10]=0x00;
+                if(command[10]==0xFF)
+                    command[10]=0x00;
                 else
-                    command_out[10]=0xFF;
-            }
-            else{
-                //wifi.write(&ch_pc,1);
+                    command[10]=0xFF;
             }
         }
+
+
         if(wifi.readable()){
             wifi.read(&ch_wifi,1);
             if(ch_wifi==0x32)
@@ -167,10 +136,10 @@ int main(){
                     char hex[3];
 
                     cnt++;
-                    if(cnt==14) {
+                    if(cnt==13) {
                         flag = 0;
                         cnt=0;
-                        for(int i=0; i<14; ++i){
+                        for(int i=0; i<13; ++i){
                             Char2Hex(buffer_wifi[i], hex);
 
                             sprintf(buffer, "*%s\n", hex);

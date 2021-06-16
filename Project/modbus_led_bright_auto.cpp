@@ -53,6 +53,10 @@ int main(){
     wifi.write(buffer, strlen(buffer));
     ThisThread::sleep_for(10000ms);
 
+    sprintf(buffer, "AT+CIPMUX=0\r\n");
+    wifi.write(buffer, strlen(buffer));
+    ThisThread::sleep_for(3000ms);
+
     sprintf(buffer, "AT+CIPSTART=\"TCP\",\"192.168.0.200\",502\r\n");
     wifi.write(buffer, strlen(buffer));
     ThisThread::sleep_for(10000ms);

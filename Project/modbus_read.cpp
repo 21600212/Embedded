@@ -26,22 +26,28 @@ void Char2Hex(unsigned char ch, char* szHex)
  szHex[2] = 0;
 }
 
-void toggle_led(){
-    command_out[9]=0x12;
+void led_on(){
+    command_out[9]=0x13;
+    command_out[10]=0x00;
 
     sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
     wifi.write(buffer,strlen(buffer));
     ThisThread::sleep_for(500ms);
 
-    for(int i=0; i<12; ++i){
-        //sprintf(buffer, "%c",command[i]);
+    for(int i=0; i<12; ++i)
         wifi.write(command_out+i,1);
-    }
+}
 
-    if(command_out[10]==0xFF)
-        command_out[10]=0x00;
-    else
-        command_out[10]=0xFF;
+void led_off(){
+    command_out[9]=0x13;
+    command_out[10]=0xFF;
+
+    sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
+    wifi.write(buffer,strlen(buffer));
+    ThisThread::sleep_for(500ms);
+
+    for(int i=0; i<12; ++i)
+        wifi.write(command_out+i,1);
 }
 
 int main(){
@@ -52,6 +58,10 @@ int main(){
     sprintf(buffer, "AT+CWJAP=\"tp_4ahnssu\",\"01051611257a\"\r\n");
     wifi.write(buffer, strlen(buffer));
     ThisThread::sleep_for(10000ms);
+
+    sprintf(buffer, "AT+CIPMUX=0\r\n");
+    wifi.write(buffer, strlen(buffer));
+    ThisThread::sleep_for(3000ms);
 
     sprintf(buffer, "AT+CIPSTART=\"TCP\",\"192.168.0.200\",502\r\n");
     wifi.write(buffer, strlen(buffer));
@@ -176,6 +186,10 @@ int main(){
                             sprintf(buffer, "*%s\n", hex);
                             pc.write(buffer, 5);
                         }
+                        if(buffer_wifi[10] > 0x08)
+                            led_on();
+                        else
+                            led_off();
                     }
                 }
                 else

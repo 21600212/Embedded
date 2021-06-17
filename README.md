@@ -13,7 +13,7 @@ Practice Board: STM32 [**NUCLEO-F411RE**](https://www.st.com/en/evaluation-tools
 7. UART (Universal Asynchronous Receiver/Transmitter)
 8. PWM (Pulse Width Modulation)
 9. I2C Protocol
-10. Wifi
+10. Wifi, AT Commands
 11. Project - Modbus Protocol with TCP, RTU
 
 **What I used**:<br>

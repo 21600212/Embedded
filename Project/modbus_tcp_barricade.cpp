@@ -127,37 +127,28 @@ int main(){
         if(pc.readable()){
             pc.read(&ch_pc, 1);
             pc.write(&ch_pc,1);
-            if(ch_pc==0x4D){
-                if(curr_status){
-                    change_light(1);
-                    ThisThread::sleep_for(200ms);
-                    change_barricade(0);
-                    curr_status = 0;
-                }
-                else{
-                    change_light(0);
-                    ThisThread::sleep_for(200ms);
-                    change_barricade(1);
-                    curr_status = 1;
-                }
-            }
-            else if(ch_pc==0x4C){
-                traffic_light[9]=0x12;
+            if(ch_pc==0x31){
+                barricade[11]=0x01;
 
                 sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
                 wifi.write(buffer,strlen(buffer));
                 ThisThread::sleep_for(500ms);
 
-                for(int i=0; i<12; ++i){
-                    wifi.write(traffic_light+i,1);
-                }
+                for(int i=0; i<12; ++i)
+                    wifi.write(barricade+i,1);
+            }
+            else if(ch_pc==0x32){
+                barricade[11]=0x02;
 
-                if(traffic_light[10]==0xFF)
-                    traffic_light[10]=0x00;
-                else
-                    traffic_light[10]=0xFF;
+                sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
+                wifi.write(buffer,strlen(buffer));
+                ThisThread::sleep_for(500ms);
+
+                for(int i=0; i<12; ++i)
+                    wifi.write(barricade+i,1);
             }
         }
+    }
 
 
         if(wifi.readable()){

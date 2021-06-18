@@ -90,11 +90,8 @@ void change_light(int led){
     }
 }
 
-void change_barricade(int block){
-    if(block)
-        barricade[11]=0x02;
-    else
-        barricade[11]=0x01;
+void barricade_open(){
+    barricade[11]=0x02;
 
     sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
     wifi.write(buffer,strlen(buffer));
@@ -103,6 +100,19 @@ void change_barricade(int block){
     for(int i=0; i<12; ++i)
         wifi.write(barricade+i,1);
 }
+
+void barricade_close(){
+    barricade[11]=0x01;
+
+    sprintf(buffer, "AT+CIPSEND=%d\r\n",12);
+    wifi.write(buffer,strlen(buffer));
+    ThisThread::sleep_for(500ms);
+
+    for(int i=0; i<12; ++i)
+        wifi.write(barricade+i,1);
+}
+
+
 
 int main(){
     char ch;

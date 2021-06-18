@@ -13,6 +13,17 @@ Practice Board: STM32 [**NUCLEO-F411RE**](https://www.st.com/en/evaluation-tools
 7. UART (Universal Asynchronous Receiver/Transmitter)
 8. PWM (Pulse Width Modulation)
 9. I2C Protocol
+10. Wifi, AT Commands
+11. Project - Modbus Protocol with TCP, RTU
 
 **What I used**:<br>
-Led, Servo Motor, Piezo Buzzer, Ultrasonic, Remote Controller, Bluetooth, Temperature&Humidity Sensor
+1. Led
+2. Servo Motor
+3. Piezo Buzzer
+4. Ultrasonic
+5. Remote Controller
+6. Bluetooth
+7. Temperature&Humidity Sensor
+8. Cds Sensor
+9. Wifi
+10. Modbus Devices
